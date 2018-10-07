@@ -12,7 +12,7 @@ const validate = todo => {
   return Joi.validate(todo, schema);
 }
 
-router.get('/', (res) => {
+router.get('/', (req, res) => {
   Todo.findAll()
     .then(items => res.json(items))
     .catch(error => res.json({ error: error }))
@@ -49,7 +49,6 @@ router.put('/:id', (req, res) => {
     { where: { id: parseInt(req.params.id) }
   })
     .then((updatedItem) => {
-      console.log(updatedItem)
       if (updatedItem[0] === 1) return Todo.findAll({ where: { id: req.params.id }})
       return res.status(404).json({ error: 'Item with the given ID not found' })
     })
