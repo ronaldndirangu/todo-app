@@ -1,12 +1,8 @@
 const express = require('express');
 const Joi = require('joi');
 const router = express.Router()
+const Todo = require('../database');
 
-const todos = [
-  { id: 1, item: 'Get milk'},
-  { id: 2, item: 'Buy gym shorts'},
-  { id: 3, item: 'Call the fabricator'},
-]
 
 const validate = todo => {
   const schema = {
@@ -16,44 +12,63 @@ const validate = todo => {
   return Joi.validate(todo, schema);
 }
 
-router.get('/', (req, res) => {
-  res.send(todos);
+router.get('/', (res) => {
+  Todo.findAll()
+    .then(items => res.json(items))
+    .catch(error => res.json({ error: error }))
 });
 
 router.post('/', (req, res) => {
   const { error } = validate(req.body);
-  if (error) return res.status(400).send(error.details[0].message);
+  if (error) return res.status(400).send({ error: error.details[0].message});
 
-  todos.push({
-    id: todos.length + 1,
-    item: req.body.item,
-  })
-  res.send(todos)
+  Todo.create(req.body)
+    .then(item => res.json(item))
+    .catch(error => res.json({ error: error }))
 });
 
 router.get('/:id', (req, res) => {
-  const todo = todos.find(item => (item.id === parseInt(req.params.id)))
-  if (!todo) return res.status(404).send('Item with given ID not found')
-  res.send(todo);
+  Todo.findAll({
+    where: {
+      id: parseInt(req.params.id)
+    }
+  })
+    .then(todo => {
+      if (todo.length === 1) return res.json(todo)
+      return res.status(404).json({ error: 'Item with the given ID not found' });
+    })
+    .catch(error => res.json({ error: error }))
 });
 
 router.put('/:id', (req, res) => {
   const { error } = validate(req.body);
-  if (error) return res.status(400).send(error.details[0].message);
+  if (error) return res.status(400).json({ error: error.details[0].message});
 
-  const todo = todos.find(item => (item.id === parseInt(req.params.id)))
-  if (!todo) return res.status(404).send('Item with given ID not found')
-
-  todo.item = req.body.item;
-  res.send(todo);
+  Todo.update(
+    { item: req.body.item },
+    { where: { id: parseInt(req.params.id) }
+  })
+    .then((updatedItem) => {
+      console.log(updatedItem)
+      if (updatedItem[0] === 1) return Todo.findAll({ where: { id: req.params.id }})
+      return res.status(404).json({ error: 'Item with the given ID not found' })
+    })
+    .then(item => res.json(item))
+    .catch(error => res.json({ error: error }))
 });
 
 router.delete('/:id', (req, res) => {
-  const todo = todos.find(item => (item.id === parseInt(req.params.id)));
-  if (!todo) return res.status(404).send('Item with given ID not found');
-
-  const index = todos.indexOf(todo);
-  todos.splice(index, 1);
-  res.send(todo);
+  Todo.destroy({
+    where: {
+      id: parseInt(req.params.id)
+    }
+  })
+    .then((deletedItem) => {
+      if (deletedItem === 1) return Todo.findAll()
+      return res.status(404).json({ error: 'Item with the given ID not found' })
+    })
+    .then(items => res.json(items))
+    .catch(error => res.json({ error: error }))
 });
+
 module.exports = router;
